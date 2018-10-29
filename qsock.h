@@ -67,6 +67,10 @@ public:
 
 	unsigned long getAddr() const;
 	bool isValid() const;
+
+	friend bool operator == (const IPAddress& a, const IPAddress& b);
+	friend bool operator != (const IPAddress& a, const IPAddress& b);
+
 private:
 	IPAddress(unsigned long l);
 
@@ -87,6 +91,9 @@ class Endpoint
 public:
 	IPAddress address;
 	unsigned short port;
+
+	friend bool operator == (const Endpoint& a, const Endpoint& b);
+	friend bool operator != (const Endpoint& a, const Endpoint& b);
 };
 
 class Host
@@ -133,6 +140,7 @@ public:
 	int recv(char *buffer, unsigned buflen) throw (SocketException);
 	void setNonBlocking(bool nonblocking) throw (SocketException);
 	bool isNonBlocking() const;
+	void setReuseAddr(bool reuse) throw (SocketException);
 private:
 	TCPSocket(SOCKET sock, IPAddress ip, short port);
 	SOCKET _sock;
@@ -195,7 +203,27 @@ std::string IPAddress::getString() const
 unsigned long IPAddress::getAddr() const { return _address; }
 bool IPAddress::isValid() const { return _address != INADDR_NONE; }
 
+bool operator == (const IPAddress& a, const IPAddress& b) 
+{
+	return a._address == b._address;
+}
+
+bool operator != (const IPAddress& a, const IPAddress& b) 
+{
+	return a._address != b._address;
+}
+
 //Endpoint
+
+bool operator == (const Endpoint& a, const Endpoint& b) 
+{
+	return a.address == b.address && a.port == b.port;
+}
+
+bool operator != (const Endpoint& a, const Endpoint& b) 
+{
+	return a.address != b.address || a.port != b.port;
+}
 
 static void endpointToSockAddr(const Endpoint& e, sockaddr_in& in, int& len)
 {
@@ -539,6 +567,15 @@ void TCPSocket::setNonBlocking(bool nonblocking) throw (SocketException)
 bool TCPSocket::isNonBlocking() const
 {
 	return _nonblocking;
+}
+
+void TCPSocket::setReuseAddr(bool reuse) throw (SocketException)
+{
+	int enable = reuse ? 1 : 0;
+	if (setsockopt(_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(int)) < 0)
+	{
+		throw SocketException("setReuseAddr failed on TCP socket", getError());
+	}
 }
 
 //Environment
